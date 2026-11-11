@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Geschichten Automat</title>
+<style>
+  :root {
+    --hintergrund: #d6eefa;   /* Hellblau Hintergrund – hier kann der Farbton angepasst werden */
+    --automat-hell: #7cc4ef;  /* Automat: Hellblau */
+    --automat: #4aa8de;
+    --automat-dunkel: #2f8cc4;
+    --gold: #f5c542;
+    --gold-dunkel: #b8901a;
+    --text: #0d3b66;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--hintergrund);
+    font-family: system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+    color: #333;
+    padding: 12px 0;
+  }
+
+  /* ===== Gehäuse des Automaten ===== */
+  .automat {
+    position: relative;
+    background: linear-gradient(180deg, var(--automat-hell), var(--automat) 40%, var(--automat-dunkel));
+    border: 6px solid var(--gold);
+    border-radius: 26px;
+    padding: 16px 52px 20px 16px;
+    width: min(96vw, 540px);
+    text-align: center;
+    box-shadow: 0 10px 0 var(--gold-dunkel), 0 18px 30px rgba(0,0,0,.3);
+  }
+  .titel {
+    margin: 0 0 14px;
+    padding: 8px 6px;
+    background: linear-gradient(180deg, #fff3b0, var(--gold));
+    border: 3px solid var(--gold-dunkel);
+    border-radius: 14px;
+    color: var(--text);
+    font-size: clamp(1.3rem, 6vw, 1.9rem);
+    font-weight: 800;
+    letter-spacing: .5px;
+  }
+
+  /* ===== Fenster mit den Walzen ===== */
+  .fenster {
+    background: #1f1f1f;
+    border: 5px solid var(--gold);
+    border-radius: 18px;
+    padding: 10px 8px;
+    box-shadow: inset 0 0 14px rgba(0,0,0,.8);
+  }
+  .walzen { display: flex; gap: 8px; }
+  .spalte { flex: 1 1 0; min-width: 0; }
+  .frage {
+    font-weight: 700;
+    font-size: 1.05rem;
+    color: var(--gold);
+    margin-bottom: 6px;
+  }
+  /* Feste Größe: alle drei Walzen sind immer gleich groß */
+  .walze {
+    background: linear-gradient(180deg, #e8e8e8, #ffffff 30%, #ffffff 70%, #d9d9d9);
+    border-radius: 12px;
+    border: 3px solid #555;
+    box-shadow: inset 0 0 10px rgba(0,0,0,.35);
+    height: 150px;
+    padding: 8px 2px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    overflow: hidden;
+  }
+  .bild {
+    height: 4.6rem;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3.4rem;
+    line-height: 1;
+    overflow: hidden;
+    flex: none;
+  }
+  .bild svg { height: 4.2rem; width: auto; }
+  .wort {
+    flex: 1;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 2px;
+    font-size: clamp(.9rem, 3.6vw, 1.15rem);
+    font-weight: 700;
+    line-height: 1.15;
+    overflow-wrap: anywhere;
+    hyphens: auto;
+  }
+  .walze.dreht { animation: wackeln .12s infinite; }
+  @keyframes wackeln {
+    0% { transform: translateY(-3px); }
+    50% { transform: translateY(3px); }
+    100% { transform: translateY(-3px); }
+  }
+
+  .behalten {
+    margin-top: 8px;
+    font-size: .95rem;
+    padding: 8px 4px;
+    width: 100%;
+    border: 3px solid var(--gold-dunkel);
+    border-radius: 12px;
+    background: #fff3b0;
+    color: var(--text);
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .behalten.fest { background: var(--gold); box-shadow: inset 0 0 0 2px var(--text); }
+  .behalten:disabled { opacity: .6; cursor: not-allowed; }
+
+  /* ===== Anzeige und Start-Knopf ===== */
+  #versuche {
+    margin: 16px 0 4px;
+    min-height: 2.6em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 1.15rem;
+    font-weight: 700;
+    text-shadow: 0 1px 3px rgba(0,0,0,.35);
+  }
+  #versuche.ende {
+    background: #fff;
+    color: var(--text);
+    text-shadow: none;
+    border-radius: 14px;
+    padding: 10px 12px;
+    border: 3px solid var(--gold);
+  }
+  #start {
+    margin-top: 6px;
+    font-size: 1.6rem;
+    font-weight: 800;
+    letter-spacing: 1px;
+    padding: 14px 48px;
+    border: none;
+    border-radius: 999px;
+    background: radial-gradient(circle at 35% 30%, #fff59d, var(--gold));
+    color: var(--text);
+    cursor: pointer;
+    box-shadow: 0 6px 0 var(--gold-dunkel);
+  }
+  #start:active { transform: translateY(5px); box-shadow: 0 1px 0 var(--gold-dunkel); }
+  #start:disabled { opacity: .6; cursor: not-allowed; }
+
+  /* ===== Hebel (Dekoration, klickbar) ===== */
+  .hebel {
+    position: absolute;
+    right: 10px;
+    top: 110px;
+    width: 34px;
+    height: 150px;
+    cursor: pointer;
+    --h: 100px;
+  }
+  .hebel .stange {
+    position: absolute;
+    left: 13px;
+    bottom: 0;
+    width: 8px;
+    height: var(--h);
+    background: linear-gradient(90deg, #aaa, #eee, #aaa);
+    border-radius: 4px;
+    transition: height .25s;
+  }
+  .hebel .kugel {
+    position: absolute;
+    left: 0;
+    bottom: calc(var(--h) - 6px);
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #ff8a80, #d50000 60%, #8e0000);
+    box-shadow: 0 3px 5px rgba(0,0,0,.4);
+    transition: bottom .25s;
+  }
+  .hebel .sockel {
+    position: absolute;
+    left: 4px;
+    bottom: -6px;
+    width: 26px;
+    height: 16px;
+    background: linear-gradient(180deg, #ddd, #999);
+    border-radius: 6px;
+  }
+  .hebel.gezogen { --h: 40px; }
+</style>
+</head>
+<body>
+  <main class="automat">
+    <h1 class="titel">🎰 Geschichten Automat</h1>
+
+    <div class="fenster">
+      <div class="walzen" aria-live="polite">
+        <div class="spalte">
+          <div class="frage">Wer?</div>
+          <div class="walze" id="walze0"><div class="bild">❓</div><div class="wort"></div></div>
+          <button class="behalten" id="fest0">Behalten</button>
+        </div>
+        <div class="spalte">
+          <div class="frage">Wo?</div>
+          <div class="walze" id="walze1"><div class="bild">❓</div><div class="wort"></div></div>
+          <button class="behalten" id="fest1">Behalten</button>
+        </div>
+        <div class="spalte">
+          <div class="frage">Was?</div>
+          <div class="walze" id="walze2"><div class="bild">❓</div><div class="wort"></div></div>
+          <button class="behalten" id="fest2">Behalten</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="versuche" aria-live="polite">Du hast 5 Versuche.</div>
+    <button id="start">Start</button>
+
+    <div class="hebel" id="hebel" aria-hidden="true">
+      <div class="stange"></div>
+      <div class="kugel"></div>
+      <div class="sockel"></div>
+    </div>
+  </main>
+
+<script>
+  // Wie oft dürfen die Kinder drehen?
+  const MAX_VERSUCHE = 5;
+
+  // Zwei selbst gezeichnete Figuren (SVG), weil es dafür kein Emoji gibt.
+  const SVG_BAUSTEINFIGUR =
+    '<svg viewBox="0 0 40 56" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+    '<rect x="16" y="1" width="8" height="4" rx="1" fill="#f4c20d"/>' +
+    '<rect x="10" y="5" width="20" height="14" rx="3" fill="#f4c20d"/>' +
+    '<circle cx="16" cy="11" r="1.6" fill="#222"/><circle cx="24" cy="11" r="1.6" fill="#222"/>' +
+    '<path d="M15 15 Q20 18.5 25 15" stroke="#222" stroke-width="1.4" fill="none" stroke-linecap="round"/>' +
+    '<rect x="8" y="20" width="24" height="15" rx="2" fill="#e53935"/>' +
+    '<rect x="2" y="21" width="6" height="14" rx="3" fill="#e53935"/>' +
+    '<rect x="32" y="21" width="6" height="14" rx="3" fill="#e53935"/>' +
+    '<circle cx="5" cy="37" r="3" fill="#f4c20d"/><circle cx="35" cy="37" r="3" fill="#f4c20d"/>' +
+    '<rect x="9" y="35" width="10" height="17" rx="2" fill="#1e3a8a"/>' +
+    '<rect x="21" y="35" width="10" height="17" rx="2" fill="#1e3a8a"/>' +
+    '</svg>';
+
+  const SVG_KLOETZCHENFIGUR =
+    '<svg viewBox="0 0 40 56" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+    '<rect x="11" y="1" width="18" height="18" fill="#c68642"/>' +
+    '<rect x="11" y="1" width="18" height="6" fill="#5d4037"/>' +
+    '<rect x="14" y="11" width="4" height="3" fill="#fff"/><rect x="22" y="11" width="4" height="3" fill="#fff"/>' +
+    '<rect x="16" y="11" width="2" height="3" fill="#3f51b5"/><rect x="24" y="11" width="2" height="3" fill="#3f51b5"/>' +
+    '<rect x="16" y="16" width="8" height="2" fill="#8d5524"/>' +
+    '<rect x="11" y="19" width="18" height="18" fill="#26a69a"/>' +
+    '<rect x="3" y="19" width="8" height="18" fill="#c68642"/>' +
+    '<rect x="29" y="19" width="8" height="18" fill="#c68642"/>' +
+    '<rect x="11" y="37" width="9" height="17" fill="#3f51b5"/>' +
+    '<rect x="20" y="37" width="9" height="17" fill="#3f51b5"/>' +
+    '</svg>';
+
+  // Bilder pro Walze – hier kannst du Einträge ändern, löschen oder ergänzen.
+  const walzenDaten = [
+    // Walze 1: Wer?
+    [
+      { bild: "🐉", wort: "der Drache" },
+      { bild: "🧙", wort: "der Zauberer" },
+      { bild: "🐱", wort: "die Katze" },
+      { bild: "🤖", wort: "der Roboter" },
+      { bild: "🧜", wort: "die Meerjungfrau" },
+      { bild: "👽", wort: "der Außerirdische" },
+      { bild: "🐻", wort: "der Bär" },
+      { bild: "🦊", wort: "der Fuchs" },
+      { bild: "👸", wort: "die Prinzessin" },
+      { bild: "🦖", wort: "der Dinosaurier" },
+      { bild: "👩‍🏫", wort: "die Lehrerin" },
+      { bild: "👨‍🏫", wort: "der Lehrer" },
+      { bild: SVG_BAUSTEINFIGUR, wort: "die Legofigur" },
+      { bild: SVG_KLOETZCHENFIGUR, wort: "die Klötzchenfigur" }
+    ],
+    // Walze 2: Wo?
+    [
+      { bild: "🏰", wort: "das Schloss" },
+      { bild: "🌋", wort: "der Vulkan" },
+      { bild: "🏝️", wort: "die Insel" },
+      { bild: "🚀", wort: "der Weltraum" },
+      { bild: "🌲", wort: "der Wald" },
+      { bild: "🏫", wort: "die Schule" },
+      { bild: "🏔️", wort: "der Berg" },
+      { bild: "🌊", wort: "das Meer" },
+      { bild: "🏠", wort: "das Haus" },
+      { bild: "🎪", wort: "der Zirkus" },
+      { bild: "🤸", wort: "der Schulhof" },
+      { bild: "🥐", wort: "die Bäckerei" },
+      { bild: "🛒", wort: "der Supermarkt" },
+      { bild: "🏟️", wort: "das Stadion" },
+      { bild: "🌳", wort: "der Park" },
+      { bild: "🛝", wort: "der Spielplatz" }
+    ],
+    // Walze 3: Was?
+    [
+      { bild: "🗝️", wort: "der Schlüssel" },
+      { bild: "🎁", wort: "das Geschenk" },
+      { bild: "⚡", wort: "der Blitz" },
+      { bild: "🗺️", wort: "die Schatzkarte" },
+      { bild: "🌈", wort: "der Regenbogen" },
+      { bild: "🥚", wort: "das Ei" },
+      { bild: "🔦", wort: "die Taschenlampe" },
+      { bild: "🧪", wort: "der Zaubertrank" },
+      { bild: "🎈", wort: "der Luftballon" },
+      { bild: "🔔", wort: "die Glocke" },
+      // Sport
+      { bild: "🚣", wort: "das Rudern" },
+      { bild: "🏑", wort: "das Hockey" },
+      { bild: "⚽", wort: "der Fußball" },
+      { bild: "🏀", wort: "der Basketball" },
+      { bild: "🤾", wort: "der Handball" },
+      // Musik und Spiel
+      { bild: "🪈", wort: "die Flöte" },
+      { bild: "🎻", wort: "die Geige" },
+      { bild: "🎹", wort: "das Klavier" },
+      { bild: "🎸", wort: "die Gitarre" },
+      { bild: "🎮", wort: "die Spielkonsole" },
+      // Obst und Gemüse
+      { bild: "🍎", wort: "der Apfel" },
+      { bild: "🍐", wort: "die Birne" },
+      { bild: "🍌", wort: "die Banane" },
+      { bild: "🍓", wort: "die Erdbeere" },
+      { bild: "🥕", wort: "die Möhre" },
+      { bild: "🥒", wort: "die Gurke" },
+      // Besteck
+      { bild: "🍴", wort: "die Gabel" },
+      { bild: "🔪", wort: "das Messer" },
+      { bild: "🥄", wort: "der Löffel" }
+    ]
+  ];
+
+  const walzen = [0, 1, 2].map(i => document.getElementById("walze" + i));
+  const festKnoepfe = [0, 1, 2].map(i => document.getElementById("fest" + i));
+  const startKnopf = document.getElementById("start");
+  const hebel = document.getElementById("hebel");
+  const versucheAnzeige = document.getElementById("versuche");
+  const fest = [false, false, false];
+  let uebrig = MAX_VERSUCHE;
+
+  function zufall(i) {
+    const liste = walzenDaten[i];
+    return liste[Math.floor(Math.random() * liste.length)];
+  }
+
+  function zeige(i, eintrag) {
+    walzen[i].querySelector(".bild").innerHTML = eintrag.bild;
+    walzen[i].querySelector(".wort").textContent = eintrag.wort;
+  }
+
+  function versucheText() {
+    if (uebrig === 1) return "Du hast noch 1 Versuch.";
+    return "Du hast noch " + uebrig + " Versuche.";
+  }
+
+  function knoepfeFreigeben() {
+    startKnopf.disabled = false;
+    festKnoepfe.forEach(k => k.disabled = false);
+  }
+
+  function ende() {
+    versucheAnzeige.classList.add("ende");
+    versucheAnzeige.textContent = "Das ist jetzt dein Auftrag!";
+    startKnopf.disabled = true;
+    festKnoepfe.forEach(k => k.disabled = true);
+  }
+
+  festKnoepfe.forEach((knopf, i) => {
+    knopf.addEventListener("click", () => {
+      fest[i] = !fest[i];
+      knopf.classList.toggle("fest", fest[i]);
+      knopf.textContent = fest[i] ? "Behalten ✔" : "Behalten";
+    });
+  });
+
+  function drehen() {
+    if (uebrig <= 0 || startKnopf.disabled) return;
+    const anzahl = fest.filter(f => !f).length;
+    if (anzahl === 0) return; // alle drei behalten: kein Versuch verbraucht
+
+    uebrig--;
+    startKnopf.disabled = true;
+    festKnoepfe.forEach(k => k.disabled = true);
+    versucheAnzeige.textContent = "…";
+
+    // Hebel nach unten ziehen
+    hebel.classList.add("gezogen");
+    setTimeout(() => hebel.classList.remove("gezogen"), 450);
+
+    let fertig = 0;
+    for (let i = 0; i < 3; i++) {
+      if (fest[i]) continue;
+      const ergebnis = zufall(i);
+      walzen[i].classList.add("dreht");
+      const wechsel = setInterval(() => zeige(i, zufall(i)), 90);
+
+      setTimeout(() => {
+        clearInterval(wechsel);
+        walzen[i].classList.remove("dreht");
+        zeige(i, ergebnis);
+        fertig++;
+        if (fertig === anzahl) {
+          if (uebrig <= 0) {
+            ende();
+          } else {
+            versucheAnzeige.textContent = versucheText();
+            knoepfeFreigeben();
+          }
+        }
+      }, 800 + i * 450);
+    }
+  }
+
+  startKnopf.addEventListener("click", drehen);
+  hebel.addEventListener("click", drehen);
+  document.addEventListener("keydown", (ev) => {
+    if (ev.code === "Space" && !startKnopf.disabled) {
+      ev.preventDefault();
+      drehen();
+    }
+  });
+</script>
+</body>
+</html>
